@@ -1,0 +1,76 @@
+---
+title: "HW2"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+pacman::p_load(fpp2, ggplot2, reportr, tibble)
+theme_set(theme_classic())
+murders <- as_tibble(wmurders)
+```
+```{r}
+# Originial time series
+autoplot(wmurders) + ylab('murders')
+```
+The murders time seriers does not seem to be stationary. We can notice a trend in this time series hence we must difference the data.
+
+```{r}
+# ACF and PACF plots of original time series
+ggtsdisplay(murders$x, plot.type = 'partial')
+```
+```{r}
+# ACF and PACF plots for first differenced time series
+ggtsdisplay(diff(murders$x), plot.type = 'partial')
+```
+Since the lag 1 in ACF plot is negative and it displays a sharp cutoff, we consider adding MA term to the model. Since the autocorrelation becomes zero at fifth lag, the range of q is 1-5.
+```{r}
+# Choosing our model
+fit1 <- Arima(murders$x, order = c(0,1,1))
+summary(fit1)
+
+
+fit2 <- Arima(murders$x, order = c(0,1,2))
+summary(fit2)
+
+
+fit3 <- Arima(murders$x, order = c(0,1,3))
+summary(fit3)
+
+
+fit4 <- Arima(murders$x, order = c(0,1,4))
+summary(fit4)
+
+
+fit5 <- Arima(murders$x, order = c(0,1,5))
+summary(fit5)
+```
+
+Since Fit 2 has the lowest AICc and BIC, we choose p,d,q as (0,1,2)
+A model with one order of differencing assumes that the original series has a constant average trend, hence a constant term should be included. Since our model is of order one, we must include a constant term.
+
+```{r}
+# Checking for residuals
+fit <- Arima(murders$x, order = c(0,1,2))
+checkresiduals(fit)
+```
+The residual plot looks like white noise, which means there is no information left in them, The ACF plot confirms this as there is no Auto-correlation between the residuals.This means that our model is satisfactory.Since the p value is high, we cannot reject null hypothesis which is that the series is white noise.
+```{r}
+#Generating forecasts
+(forecast <- fit %>% 
+             forecast(h = 3))
+forecast %>% autoplot() + ylab('murders')
+```
+```{r}
+ # let ARIMA() choose the model
+auto <- auto.arima(murders$x, d = 1)
+summary(auto)
+```
+The ARIMA has chosen (0,1,0). Since the model with pre existing p,d,q have lower AICc and BIC, that is a better model than the model that ARIMA has chosen
+```{r}
+ # Force run all combinations
+auto_fit <- auto.arima(murders$x, d = 1, stepwise = FALSE, approximation = FALSE)
+summary(auto_fit)
+```
+When we force run all the combinations,ARIMA selects (0,1,2), which is the model that we have chosen to be the best model as well.
